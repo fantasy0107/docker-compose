@@ -1,0 +1,60 @@
+# docker-compose.yml
+version: '3'
+
+networks:
+  frontend:
+    driver: ${NETWORKS_DRIVER}
+  backend:
+    driver: ${NETWORKS_DRIVER}
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    networks:
+      - frontend
+      - backend
+    ports:
+      - "${NGINX_HOST_HTTP_PORT}:80"
+      - "${NGINX_HOST_HTTPS_PORT}:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/ssl/
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}/html/${APP_CONTAINER_PROJECT_NAME}
+      - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
+    restart: unless-stopped
+  php:
+    container_name: php
+    build: ./php
+    networks:
+      - backend
+    expose:
+      - 9000
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}/html/${APP_CONTAINER_PROJECT_NAME}
+    restart: unless-stopped
+  mariadb:
+    image: mariadb
+    container_name: mariadb
+    ports:
+      - "${MARIADB_PORT}:3306"
+    networks:
+      - backend
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    environment:
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+    restart: unless-stopped
+  phpmyadmin:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - 8080:80
+    networks:
+        - frontend
+        - backend
+    environment:
+      - PMA_ARBITRARY=1
